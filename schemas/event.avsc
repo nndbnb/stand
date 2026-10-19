@@ -1,0 +1,514 @@
+{
+  "type": "record",
+  "name": "MoexTqbrEvent",
+  "namespace": "course.bigdata.moex",
+  "doc": "ЛР2, вариант №12: marketdata TQBR. Avro v1 хранит все выявленные поля источника, кроме NUMTRADES: оно специально исключено для эволюции v2. Для всех числовых показателей допускается null; типы полей с одними null предварительные.",
+  "fields": [
+    {
+      "name": "event_key",
+      "type": "string",
+      "doc": "Идемпотентный ключ события: TQBR + SECID + UTC-время."
+    },
+    {
+      "name": "event_time",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "SYSTIME, приведённое из MSK к миллисекундам Unix UTC."
+    },
+    {
+      "name": "received_at",
+      "type": "string",
+      "doc": "Время получения сборщиком, ISO 8601 UTC."
+    },
+    {
+      "name": "source",
+      "type": "string",
+      "doc": "Источник данных: moex."
+    },
+    {
+      "name": "SECID",
+      "type": "string",
+      "doc": "Код ценной бумаги"
+    },
+    {
+      "name": "BOARDID",
+      "type": "string",
+      "doc": "Код режима торгов TQBR"
+    },
+    {
+      "name": "BID",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Лучшая цена заявки на покупку"
+    },
+    {
+      "name": "BIDDEPTH",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Глубина спроса; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "OFFER",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Лучшая цена заявки на продажу"
+    },
+    {
+      "name": "OFFERDEPTH",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Глубина предложения; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "SPREAD",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Разница цены продажи и покупки"
+    },
+    {
+      "name": "BIDDEPTHT",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Суммарный объём заявок на покупку"
+    },
+    {
+      "name": "OFFERDEPTHT",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Суммарный объём заявок на продажу"
+    },
+    {
+      "name": "OPEN",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена открытия"
+    },
+    {
+      "name": "LOW",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Минимальная цена торгового периода"
+    },
+    {
+      "name": "HIGH",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Максимальная цена торгового периода"
+    },
+    {
+      "name": "LAST",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена последней сделки"
+    },
+    {
+      "name": "LASTCHANGE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Абсолютное изменение последней цены"
+    },
+    {
+      "name": "LASTCHANGEPRCNT",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Процентное изменение последней цены"
+    },
+    {
+      "name": "QTY",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Объём последней сделки"
+    },
+    {
+      "name": "VALUE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Денежный объём последней сделки"
+    },
+    {
+      "name": "VALUE_USD",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Денежный объём последней сделки в USD"
+    },
+    {
+      "name": "WAPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Средневзвешенная цена"
+    },
+    {
+      "name": "LASTCNGTOLASTWAPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Разница последней и средневзвешенной цены"
+    },
+    {
+      "name": "WAPTOPREVWAPRICEPRCNT",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Процентное изменение средневзвешенной цены"
+    },
+    {
+      "name": "WAPTOPREVWAPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Изменение средневзвешенной цены"
+    },
+    {
+      "name": "CLOSEPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена закрытия; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "MARKETPRICETODAY",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Рыночная цена текущего дня; тип предварительный"
+    },
+    {
+      "name": "MARKETPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Рыночная цена"
+    },
+    {
+      "name": "LASTTOPREVPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Изменение цены относительно предыдущего закрытия"
+    },
+    {
+      "name": "VOLTODAY",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Накопленный объём торгов"
+    },
+    {
+      "name": "VALTODAY",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Накопленный денежный оборот торгов"
+    },
+    {
+      "name": "VALTODAY_USD",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Накопленный оборот в USD"
+    },
+    {
+      "name": "ETFSETTLEPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Расчётная цена ETF; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "TRADINGSTATUS",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Статус торгов"
+    },
+    {
+      "name": "UPDATETIME",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Время обновления котировки ISS"
+    },
+    {
+      "name": "LASTBID",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена последней заявки на покупку; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "LASTOFFER",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена последней заявки на продажу; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "LCLOSEPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена последнего закрытия; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "LCURRENTPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Текущая цена"
+    },
+    {
+      "name": "MARKETPRICE2",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Дополнительная рыночная цена; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "NUMBIDS",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Количество заявок на покупку; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "NUMOFFERS",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Количество заявок на продажу; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "CHANGE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Изменение цены"
+    },
+    {
+      "name": "TIME",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Время последней сделки в исходном формате ISS"
+    },
+    {
+      "name": "HIGHBID",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Максимальная цена заявки на покупку; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "LOWOFFER",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Минимальная цена заявки на продажу; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "PRICEMINUSPREVWAPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Разность цены и предыдущей средневзвешенной цены"
+    },
+    {
+      "name": "OPENPERIODPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена открытия текущего периода"
+    },
+    {
+      "name": "SEQNUM",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Номер обновления ISS, целое 64 бита"
+    },
+    {
+      "name": "SYSTIME",
+      "type": "string",
+      "doc": "Время биржевого обновления, исходная строка MSK"
+    },
+    {
+      "name": "CLOSINGAUCTIONPRICE",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Цена аукциона закрытия; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "CLOSINGAUCTIONVOLUME",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Объём аукциона закрытия; в выборке только null, тип предварительный"
+    },
+    {
+      "name": "ISSUECAPITALIZATION",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Капитализация выпуска"
+    },
+    {
+      "name": "ISSUECAPITALIZATION_UPDATETIME",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Время обновления капитализации"
+    },
+    {
+      "name": "ETFSETTLECURRENCY",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Валюта расчётной цены ETF"
+    },
+    {
+      "name": "VALTODAY_RUR",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Накопленный денежный оборот в рублях"
+    },
+    {
+      "name": "TRADINGSESSION",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Идентификатор торговой сессии"
+    },
+    {
+      "name": "TRENDISSUECAPITALIZATION",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null,
+      "doc": "Изменение капитализации"
+    }
+  ]
+}
