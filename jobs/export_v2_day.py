@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""ЛР2: выгрузить ТОЛЬКО новую UTC-дату событий по Avro v2.
+"""ЛР2: Parquet v2 для выбранной UTC-даты.
 
-Запуск (из ~/stand): python3 jobs/export_v2_day.py --day YYYY-MM-DD
-Дата должна отсутствовать среди текущих партиций v1 и быть законченной
-с учётом следующего дня получения UTC. Raw-файлы не меняются.
+Обычный режим: только новую завершённую дату; v1 не изменяется.
+Для демонстрации 26 октября:
+  python3 jobs/export_v2_day.py --day 2026-10-26 \
+    --snapshot-incomplete-day --replace-existing-day
+При замене прежняя v1-партиция резервируется после успешной проверки v2.
+В режиме снимка текущий UTC-час пропускается. Raw JSONL.gz не удаляются.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ RAW = ROOT / "data/raw/stream"
 WORK = ROOT / "data/duckdb"
 OUT = WORK / "parquet/events"
 STAGE_ROOT = WORK / ".parquet_stage"
+BACKUP = WORK / "parquet_v1_backup"
 SCHEMA = ROOT / "schemas/event_v2.avsc"
 TEMPLATE = ROOT / "jobs/to_parquet_v2_day.sql"
 
@@ -55,10 +59,15 @@ def schema_columns():
     return result
 
 
-def source_groups(day: date):
+def source_groups(day: date, snapshot_incomplete_day: bool = False):
     groups = []
+    now_utc = datetime.now(timezone.utc)
+    open_hour = (now_utc.date().isoformat(), now_utc.hour)
     for date_received in (day, day + timedelta(days=1)):
         for hour in range(24):
+            # Текущий UTC-час может ещё пополняться: не включаем его.
+            if snapshot_incomplete_day and (date_received.isoformat(), hour) >= open_hour:
+                continue
             folder = RAW / f"dt={date_received.isoformat()}" / f"hour={hour:02d}"
             paths = sorted(folder.glob("part-*.jsonl.gz"))
             if paths:
@@ -162,6 +171,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--day", required=True, help="Новая дата event_time UTC YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--snapshot-incomplete-day", action="store_true",
+                        help="Снимок только завершённых часов получения UTC")
+    parser.add_argument("--replace-existing-day", action="store_true",
+                        help="Резервировать существующую v1-партицию после проверки v2")
     args = parser.parse_args()
     try:
         day = date.fromisoformat(args.day)
@@ -170,9 +183,11 @@ def main():
     if day.isoformat() != args.day:
         parser.error("Дата должна быть YYYY-MM-DD")
     following = day + timedelta(days=1)
+    if args.snapshot_incomplete_day and day > datetime.now(timezone.utc).date():
+        parser.error("Нельзя делать снимок будущих UTC-суток")
 
     if args.dry_run:
-        groups = source_groups(day)
+        groups = source_groups(day, args.snapshot_incomplete_day)
         print(f"Предварительный просмотр: {day}; каталогов-часов: {len(groups)}")
         for recv_day, hour, paths in groups:
             print(f"  {recv_day} hour={hour}: {len(paths)} gzip-файлов")
@@ -180,20 +195,29 @@ def main():
 
     # Для отбора поздних событий следующая дата получения тоже должна завершиться.
     today = datetime.now(timezone.utc).date()
-    if today <= following:
+    if today <= following and not args.snapshot_incomplete_day:
         raise SystemExit(
-            f"UTC-дата {day} ещё не готова: дождитесь закрытия {following} UTC"
+            f"UTC-дата {day} ещё не готова: дождитесь закрытия {following} UTC "
+            "или используйте --snapshot-incomplete-day для частичного снимка"
         )
     target = OUT / f"event_date={args.day}"
-    if target.exists():
+    backup_target = BACKUP / target.name
+    if args.replace_existing_day:
+        if not target.is_dir() or not list(target.glob("recv-*.parquet")):
+            raise SystemExit(f"Для замены необходима существующая v1-партиция: {target}")
+        if backup_target.exists():
+            raise SystemExit(f"Резервная папка уже существует: {backup_target}")
+        if list(target.glob("v2-recv-*.parquet")):
+            raise SystemExit("Партиция уже содержит v2; замена заблокирована")
+    elif target.exists():
         raise SystemExit(
             f"ОСТАНОВЛЕНО: {target} уже существует. "
-            "Существующие партиции v1/v2 НЕ перезаписываем."
+            "Для резервируемой замены укажите --replace-existing-day."
         )
     if not any(OUT.glob("event_date=*/*.parquet")):
         raise SystemExit("Старые файлы Parquet v1 не найдены; нечего сравнивать.")
 
-    groups = source_groups(day)
+    groups = source_groups(day, args.snapshot_incomplete_day)
     if not groups:
         raise SystemExit(f"Нет исходных gzip для {day} и {following}")
     print(f"Дата события UTC: {day}; каталогов-часов получения: {len(groups)}",
@@ -248,13 +272,27 @@ def main():
             raise RuntimeError("Сырые файлы изменились при работе; повторите загрузку")
         # Одно атомарное переименование готовой партиции на том же диске.
         OUT.mkdir(parents=True, exist_ok=True)
-        if target.exists():
-            raise RuntimeError(f"Партиция появилась во время записи: {target}")
-        os.rename(parquet_day, target)
+        if args.replace_existing_day:
+            BACKUP.mkdir(parents=True, exist_ok=True)
+            if backup_target.exists() or not target.is_dir():
+                raise RuntimeError("Исходная партиция или резерв изменились")
+            os.rename(target, backup_target)
+            try:
+                os.rename(parquet_day, target)
+            except OSError:
+                os.rename(backup_target, target)
+                raise
+            print(f"Резервная копия v1: {backup_target}", flush=True)
+        else:
+            if target.exists():
+                raise RuntimeError(f"Партиция появилась во время записи: {target}")
+            os.rename(parquet_day, target)
         print(f"RESULT: OK v2 day={day} rows={converted_total} "
               f"NUMTRADES_not_null={with_numtrades} files={len(files)}",
               flush=True)
         print(f"Parquet: {target}", flush=True)
+        if args.snapshot_incomplete_day:
+            print("ВНИМАНИЕ: снимок закрытых часов, а не полные UTC-сутки.", flush=True)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
 
