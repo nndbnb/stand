@@ -167,11 +167,11 @@ SELECT count(*) AS parquet_rows,
        max(event_time) AS max_event_time_utc,
        count(DISTINCT event_key) AS distinct_event_keys
 FROM read_parquet(
- '/data/duckdb/parquet/events/event_date=2026-10-19/recv-20261019-16_*.parquet',
+ '/data/duckdb/parquet/events/event_date=*/recv-20261019-16_*.parquet',
  hive_partitioning = true
 );
 
 DESCRIBE SELECT * FROM read_parquet(
- '/data/duckdb/parquet/events/event_date=2026-10-19/recv-20261019-16_*.parquet',
+ '/data/duckdb/parquet/events/event_date=*/recv-20261019-16_*.parquet',
  hive_partitioning = true
 );
