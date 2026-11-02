@@ -1,0 +1,146 @@
+-- ЛР4. Шаблон загрузки одного интервала [__START__, __END__) UTC.
+-- Генерирует jobs/iceberg_load.py; вручную не запускать.
+-- Замена интервала: DELETE перед INSERT; соседние часы/дни не затрагивать.
+-- Отсутствие строк в исходном периоде обрабатывается драйвером (не создаёт пустой снимок).
+SET TimeZone = 'UTC';
+SET memory_limit = '2048MB';
+SET threads = 2;
+
+BEGIN TRANSACTION;
+DELETE FROM lake.clean.events
+WHERE event_time >= TIMESTAMP '__START__'
+  AND event_time < TIMESTAMP '__END__';
+
+INSERT INTO lake.clean.events (
+  "event_key",
+  "event_time",
+  "received_at",
+  "source",
+  "SECID",
+  "BOARDID",
+  "BID",
+  "BIDDEPTH",
+  "OFFER",
+  "OFFERDEPTH",
+  "SPREAD",
+  "BIDDEPTHT",
+  "OFFERDEPTHT",
+  "OPEN",
+  "LOW",
+  "HIGH",
+  "LAST",
+  "LASTCHANGE",
+  "LASTCHANGEPRCNT",
+  "QTY",
+  "VALUE",
+  "VALUE_USD",
+  "WAPRICE",
+  "LASTCNGTOLASTWAPRICE",
+  "WAPTOPREVWAPRICEPRCNT",
+  "WAPTOPREVWAPRICE",
+  "CLOSEPRICE",
+  "MARKETPRICETODAY",
+  "MARKETPRICE",
+  "LASTTOPREVPRICE",
+  "VOLTODAY",
+  "VALTODAY",
+  "VALTODAY_USD",
+  "ETFSETTLEPRICE",
+  "TRADINGSTATUS",
+  "UPDATETIME",
+  "LASTBID",
+  "LASTOFFER",
+  "LCLOSEPRICE",
+  "LCURRENTPRICE",
+  "MARKETPRICE2",
+  "NUMBIDS",
+  "NUMOFFERS",
+  "CHANGE",
+  "TIME",
+  "HIGHBID",
+  "LOWOFFER",
+  "PRICEMINUSPREVWAPRICE",
+  "OPENPERIODPRICE",
+  "SEQNUM",
+  "SYSTIME",
+  "CLOSINGAUCTIONPRICE",
+  "CLOSINGAUCTIONVOLUME",
+  "ISSUECAPITALIZATION",
+  "ISSUECAPITALIZATION_UPDATETIME",
+  "ETFSETTLECURRENCY",
+  "VALTODAY_RUR",
+  "TRADINGSESSION",
+  "TRENDISSUECAPITALIZATION"
+)
+SELECT
+  "event_key",
+  "event_time",
+  "received_at",
+  "source",
+  "SECID",
+  "BOARDID",
+  "BID",
+  "BIDDEPTH",
+  "OFFER",
+  "OFFERDEPTH",
+  "SPREAD",
+  "BIDDEPTHT",
+  "OFFERDEPTHT",
+  "OPEN",
+  "LOW",
+  "HIGH",
+  "LAST",
+  "LASTCHANGE",
+  "LASTCHANGEPRCNT",
+  "QTY",
+  "VALUE",
+  "VALUE_USD",
+  "WAPRICE",
+  "LASTCNGTOLASTWAPRICE",
+  "WAPTOPREVWAPRICEPRCNT",
+  "WAPTOPREVWAPRICE",
+  "CLOSEPRICE",
+  "MARKETPRICETODAY",
+  "MARKETPRICE",
+  "LASTTOPREVPRICE",
+  "VOLTODAY",
+  "VALTODAY",
+  "VALTODAY_USD",
+  "ETFSETTLEPRICE",
+  "TRADINGSTATUS",
+  "UPDATETIME",
+  "LASTBID",
+  "LASTOFFER",
+  "LCLOSEPRICE",
+  "LCURRENTPRICE",
+  "MARKETPRICE2",
+  "NUMBIDS",
+  "NUMOFFERS",
+  "CHANGE",
+  "TIME",
+  "HIGHBID",
+  "LOWOFFER",
+  "PRICEMINUSPREVWAPRICE",
+  "OPENPERIODPRICE",
+  "SEQNUM",
+  "SYSTIME",
+  "CLOSINGAUCTIONPRICE",
+  "CLOSINGAUCTIONVOLUME",
+  "ISSUECAPITALIZATION",
+  "ISSUECAPITALIZATION_UPDATETIME",
+  "ETFSETTLECURRENCY",
+  "VALTODAY_RUR",
+  "TRADINGSESSION",
+  "TRENDISSUECAPITALIZATION"
+FROM read_parquet(
+  '__SOURCE__',
+  hive_partitioning = true
+)
+WHERE event_time >= TIMESTAMP '__START__'
+  AND event_time < TIMESTAMP '__END__';
+COMMIT;
+
+SELECT COUNT(*) AS loaded_rows
+FROM lake.clean.events
+WHERE event_time >= TIMESTAMP '__START__'
+  AND event_time < TIMESTAMP '__END__';
