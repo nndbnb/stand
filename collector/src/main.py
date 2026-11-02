@@ -352,6 +352,11 @@ def record(config: Config, metrics: Metrics) -> None:
     store.recover(last)
     atomic_json(state_path, {"source_filter": "stock/shares/TQBR", "last_by_security": last})
     client = ISSClient(config, metrics)
+    lake_sync = None
+    if os.environ.get("COLLECTOR_LAKE_PREFIX", "").strip():
+        from lake_sync import LakeSync
+        lake_sync = LakeSync(config.raw_dir, STOP, log)
+        lake_sync.start()
     log("info", "start", mode="record", source=config.source, filter="stock/shares/TQBR")
     try:
         while not STOP.is_set():
@@ -409,6 +414,8 @@ def record(config: Config, metrics: Metrics) -> None:
                 STOP.wait(left)
     finally:
         store.close()
+        if lake_sync is not None:
+            lake_sync.close()
         atomic_json(state_path, {"source_filter": "stock/shares/TQBR", "last_by_security": last})
         log("info", "stopped", mode="record")
 
