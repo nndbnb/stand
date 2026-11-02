@@ -64,7 +64,7 @@ def prepare(day, env):
     sql = TEMPLATE.read_text(encoding="utf-8")
     assert "__RAW_FILES__" in sql and "__OUT_OBJECT__" in sql
     output = f"s3://{env.get('S3_BUCKET','lake')}/clean/event_date={day}/part-00000.parquet"
-    rendered = (sql.replace("__RAW_FILES__", ",\n    ".join(quote(x) for x in source_paths))
+    rendered = (sql.replace("__RAW_FILES__", ", ".join(quote(x) for x in source_paths))
                .replace("__DAY__", day)
                .replace("__NEXT_DAY__", source_days[1].isoformat())
                .replace("__OUT_OBJECT__", output))
