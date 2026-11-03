@@ -76,7 +76,16 @@ else
   run "Plan clean.history" python3 jobs/clean_history.py --all --dry-run || true
   run "Plan Iceberg loading" python3 jobs/iceberg_load.py --all --dry-run || true
 fi
-run "S3 inventory" python3 jobs/lr34_inventory.py >"$REPORT/inventory.json" || true
+log "START S3 inventory"
+if python3 jobs/lr34_inventory.py >"$REPORT/inventory.json" 2>>"$LOG"; then
+  log "PASS S3 inventory"
+  echo "- S3 inventory: PASS (see inventory.json)" >>"$SUMMARY"
+else
+  log "FAIL S3 inventory"
+  echo "- S3 inventory: FAIL" >>"$SUMMARY"
+  rm -f "$REPORT/inventory.json"
+  STATUS=1
+fi
 run "LR3 pruning verification" python3 jobs/verify_clean.py --day 2026-10-19 || true
 run "LR4 pruning verification" bash -c 'docker compose run --rm -T duckdb -init init.sql -bail -f /dev/stdin < jobs/iceberg_benchmark.sql' || true
 run "Retention dry run" python3 jobs/retention.py --layer clean --days 2 --dry-run || true
