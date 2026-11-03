@@ -58,7 +58,7 @@ cat >"$SUMMARY" <<EOF
 ## Checks
 EOF
 
-run "Python syntax" python3 -m py_compile jobs/clean.py jobs/clean_history.py jobs/lr34_inventory.py jobs/iceberg_load.py || exit 1
+run "Python syntax" python3 -m py_compile jobs/clean.py jobs/clean_history.py jobs/lr34_inventory.py jobs/verify_clean_counts.py jobs/iceberg_load.py || exit 1
 run "Compose configuration" docker compose config --quiet || exit 1
 if [[ "$MODE" == apply ]]; then
   DEST="$BACKUP_DIR/lr34-$STAMP"
@@ -86,6 +86,7 @@ else
   rm -f "$REPORT/inventory.json"
   STATUS=1
 fi
+run "LR3 raw versus clean counts" python3 jobs/verify_clean_counts.py --day 2026-10-19 || true
 run "LR3 pruning verification" python3 jobs/verify_clean.py --day 2026-10-19 || true
 run "LR4 pruning verification" bash -c 'docker compose run --rm -T duckdb -init init.sql -bail -f /dev/stdin < jobs/iceberg_benchmark.sql' || true
 run "Retention dry run" python3 jobs/retention.py --layer clean --days 2 --dry-run || true
@@ -96,7 +97,7 @@ cat >>"$SUMMARY" <<'EOF'
 
 - [ ] Dated LR1 restore point (not recoverable retroactively).
 - [ ] External raw backup is no older than 7 days.
-- [ ] Per-day raw/clean row reconciliation with rejection reasons.
+- [ ] Review raw/clean reconciliation output from the full local log (automatic check covers 2026-10-19 only).
 - [ ] Iceberg ALL S3 object counts before/after snapshot expiration.
 - [ ] LR3 bonus: cloud annual price and 1000x scenario.
 - [ ] LR4 bonus: simultaneous commit conflict experiment (not run automatically).
