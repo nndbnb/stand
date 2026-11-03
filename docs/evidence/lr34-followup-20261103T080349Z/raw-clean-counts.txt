@@ -1,0 +1,2 @@
+│ input_raw_D_and_D1 │ event_day_rows │ invalid_or_empty │ eligible_rows │ expected_unique_keys │ actual_clean_rows │ actual_clean_unique_keys │
+│            1206602 │         724665 │                0 │        724665 │               724665 │            724665 │                   724665 │
