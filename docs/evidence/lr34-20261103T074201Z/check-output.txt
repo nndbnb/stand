@@ -1,0 +1,17 @@
+PASS Python syntax
+PASS Compose configuration
+PASS Start lab4 containers
+LOCAL objects=10242 bytes=1415994017
+S3    objects=10242 bytes=1415994017
+MISSING=0 MISMATCHED_SIZE=0 EXTRA=0
+PASS Audit raw files to S3
+SUMMARY days=16 skipped=2 errors=0
+PASS Rebuild clean.events eligible dates
+HISTORY SUMMARY days=9 errors=0
+PASS Build clean.history candles
+PASS Reload Iceberg from updated clean.events
+PASS S3 inventory
+PASS LR3 raw versus clean counts
+PASS LR3 pruning verification
+PASS LR4 pruning verification
+PASS Retention dry run
