@@ -108,6 +108,9 @@ cat >>"$SUMMARY" <<'EOF'
     git commit -m "test: lr34 WSL acceptance results"
     git push personal lab3-lab4
 EOF
+# Whitelist only operational counters and PASS/FAIL; never publish full logs or environment.
+grep -E '^(SUMMARY days=|HISTORY SUMMARY days=|LOCAL objects=|S3[[:space:]]+objects=|MISSING=|PASS |FAIL )' "$LOG" \
+  | head -n 150 >"$REPORT/check-output.txt" || true
 log "REPORT=$REPORT"
 log "FULL_LOG=$LOG (ignored by Git)"
 log "STATUS=$STATUS"
