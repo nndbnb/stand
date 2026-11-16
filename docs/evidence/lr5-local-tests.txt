@@ -1,0 +1,29 @@
+Local validation 2026-11-16. Synthetic fixtures; no WSL/S3/Iceberg/DataLens deployment was run.
+DuckDB 1.5.5; ClickHouse via chdb "26.11.1.1".
+
+$ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m unittest discover -s tests -p test_lr5.py -v
+test_failed_experiment_cleans_only_its_own_prefix_and_tables (test_lr5.ExperimentTests.test_failed_experiment_cleans_only_its_own_prefix_and_tables) ... ok
+test_constant_status_uses_measured_daily_activity (test_lr5.WarehouseTests.test_constant_status_uses_measured_daily_activity) ... ok
+test_corrected_history_updates_existing_fact_foreign_keys (test_lr5.WarehouseTests.test_corrected_history_updates_existing_fact_foreign_keys) ... ok
+test_duplicate_source_rejected_before_partition_replacement (test_lr5.WarehouseTests.test_duplicate_source_rejected_before_partition_replacement) ... ok
+test_empty_replacement_removes_only_selected_partition (test_lr5.WarehouseTests.test_empty_replacement_removes_only_selected_partition) ... ok
+test_full_verification_and_broken_aggregate_detection (test_lr5.WarehouseTests.test_full_verification_and_broken_aggregate_detection) ... ok
+test_lake_and_materialized_answer_match_on_real_parquet (test_lr5.WarehouseTests.test_lake_and_materialized_answer_match_on_real_parquet) ... ok
+test_repeat_day_preserves_facts_mv_and_neighbour_days (test_lr5.WarehouseTests.test_repeat_day_preserves_facts_mv_and_neighbour_days) ... ok
+test_scd2_half_open_boundary_and_asof (test_lr5.WarehouseTests.test_scd2_half_open_boundary_and_asof) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.481s
+
+OK
+exit_code=0
+
+$ node tests/test_datalens_bootstrap.cjs
+PASS: native DataLens API payloads, authentication, three query routes, repeat bootstrap, no token in report
+exit_code=0
+
+$ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python -m py_compile jobs/lr5.py jobs/lr5_acceptance.py
+exit_code=0
+
+$ bash -n scripts/lr5_apply.sh
+exit_code=0

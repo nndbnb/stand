@@ -1,0 +1,54 @@
+{
+  "type": "ql",
+  "chartType": "sql",
+  "connection": {},
+  "colors": [],
+  "colorsConfig": {},
+  "labels": [],
+  "tooltips": [],
+  "shapes": [],
+  "shapesConfig": {},
+  "extraSettings": {},
+  "queryValue": "",
+  "queries": [],
+  "params": [],
+  "order": null,
+  "version": "7",
+  "geopointsConfig": {},
+  "visualization": {
+    "id": "column",
+    "type": "column",
+    "name": "label_visualization-column",
+    "allowFilters": false,
+    "allowColors": true,
+    "allowSort": false,
+    "allowSegments": false,
+    "allowLabels": true,
+    "allowAvailable": true,
+    "placeholders": [
+      {
+        "id": "x",
+        "type": "x",
+        "title": "section_x",
+        "items": [],
+        "settings": {
+          "title": "on",
+          "axisVisibility": "show",
+          "axisModeMap": {}
+        }
+      },
+      {
+        "id": "y",
+        "type": "y",
+        "title": "section_y",
+        "items": [],
+        "settings": {
+          "title": "on",
+          "axisVisibility": "show",
+          "scale": "auto",
+          "nulls": "ignore"
+        }
+      }
+    ]
+  }
+}
