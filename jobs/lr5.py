@@ -173,7 +173,13 @@ def duck_exec(sql):
 def spark_exec(sql):
     proc=subprocess.run(['docker','compose','run','--rm','-T','spark','/opt/spark/bin/spark-sql','-S','-e',sql],
                         cwd=ROOT,text=True,capture_output=True)
-    if proc.returncode:raise RuntimeError('Spark: ошибка экспериментальной таблицы/очистки')
+    if proc.returncode:
+        detail=proc.stdout+'\n'+proc.stderr
+        for key,value in env_read().items():
+            if value and any(word in key.upper() for word in ('PASSWORD','SECRET','ACCESS_KEY','TOKEN')):
+                detail=detail.replace(value,'[hidden]')
+        if len(detail)>6000:detail=detail[:3500]+'\n[...середина трассировки пропущена...]\n'+detail[-2500:]
+        raise RuntimeError('Spark: SQL='+sql+'\n'+detail)
     return proc.stdout
 
 
@@ -361,8 +367,8 @@ def experiment(env, day):
             select = f'''SELECT concat(event_key,'|lr5|',CAST(i AS VARCHAR)) AS event_key,event_time,SECID
                 FROM read_parquet({quote(source)},hive_partitioning=false) CROSS JOIN range({factor}) r(i)'''
             duck_exec(f"COPY ({select}) TO {quote(path)} (FORMAT PARQUET,COMPRESSION ZSTD,ROW_GROUP_SIZE 32768);")
-            location=f's3://{bucket}/{prefix}iceberg-x{factor}'
-            spark_exec(f"CREATE TABLE {table} USING iceberg LOCATION {quote(location)} AS SELECT * FROM parquet.`{path}`;")
+            spark_exec(f"CREATE TABLE {table} (event_key STRING,event_time TIMESTAMP,SECID STRING) USING iceberg;")
+            duck_exec(f"INSERT INTO {table} SELECT event_key,event_time,SECID FROM read_parquet({quote(path)},hive_partitioning=false);")
             ch.query(f'''CREATE TABLE {ident}.fact_{factor} (event_key String,event_time DateTime64(3,'UTC'),SECID String)
                 ENGINE=MergeTree PARTITION BY toDate(event_time) ORDER BY (SECID,event_time,event_key)''')
             ch.query(f'''CREATE TABLE {ident}.hourly_{factor} (event_hour DateTime('UTC'),SECID String,events UInt64)
@@ -388,6 +394,18 @@ def experiment(env, day):
         for sql in [f'DROP TABLE IF EXISTS lake.{ident}.events_{factor} PURGE;' for factor in (1,10)]+[f'DROP NAMESPACE IF EXISTS lake.{ident};']:
             try:spark_exec(sql)
             except Exception as exc:lake_errors.append(str(exc))
+        cleanup_warnings=[]
+        if lake_errors:
+            # A REST catalog may remove the entry before Spark's PURGE encounters
+            # an already missing metadata file. Confirm absence; never ignore a
+            # failed purge while its namespace is still present or unobservable.
+            try:
+                namespaces={line.strip() for line in spark_exec('SHOW NAMESPACES IN lake;').splitlines()}
+                if ident not in namespaces:
+                    cleanup_warnings=lake_errors
+                    lake_errors=[]
+            except Exception as exc:
+                lake_errors.append(str(exc))
         cleanup['lakehouse']=not lake_errors
         failures.extend(lake_errors)
         try:
@@ -410,7 +428,7 @@ def experiment(env, day):
                 'prediction_x1000':prediction,'measurements':results,'cleanup':cleanup,
                 'working_fact_unchanged':before==fingerprint(ch),
                 'working_clean_unchanged':source_inventory==inventory(env),
-                'working_iceberg_unchanged':snapshot_before==current_snapshot(),'errors':failures,
+                'working_iceberg_unchanged':snapshot_before==current_snapshot(),'errors':failures,'cleanup_warnings':cleanup_warnings,
                 'limit':'Проверка на x10 оценивает тенденцию. Реальное время x1000 не измерялось; линейная экстраполяция не гарантируется.'}
         if '1' in results and '10' in results:
             ratios={}
@@ -542,3 +560,4 @@ def main():
 
 if __name__=='__main__':
     raise SystemExit(main())
+

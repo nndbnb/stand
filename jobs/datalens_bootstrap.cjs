@@ -22,7 +22,13 @@ async function main(input, fetchImpl=fetch) {
             method, headers: {'Content-Type':'application/json', ...(authorization ? {Authorization:authorization} : {}), ...extra},
             ...(body ? {body:JSON.stringify(body)} : {}), signal:AbortSignal.timeout(180000),
         });
-        if (!response.ok) throw new Error(`${service} ${path}: HTTP ${response.status}`);
+        if (!response.ok) {
+            let detail=await response.text();
+            for (const secret of [authorization,authorization?.slice(7),input.adminPassword,input.env.WAREHOUSE_PASSWORD]) {
+                if(secret)detail=detail.split(secret).join('[hidden]');
+            }
+            throw new Error(`${service} ${path}: HTTP ${response.status}\n${detail.slice(0,2000)}`);
+        }
         return response;
     }
     const login = await call('bi-auth','/signin',{login:'admin',password:input.adminPassword});
@@ -40,33 +46,33 @@ async function main(input, fetchImpl=fetch) {
     const request=async (...args)=>(await call(...args)).json();
     const list=await request('bi-us','/v2/workbooks?pageSize=100');
     const books=list.workbooks || list.entries || (Array.isArray(list) ? list : []);
-    const title='ЛР5 · MOEX TQBR';
+    const title='ЛР5 - MOEX TQBR';
     const existing=books.filter(w=>w.title===title);
     if (existing.length>1) throw new Error('Найдено несколько книг ЛР5: оставь одну или укажи сохранённую data/lr5/dashboard.json');
     const workbookId=input.existing?.workbookId || existing[0]?.workbookId ||
         (await request('bi-us','/v2/workbooks',{title,description:'ЛР5: очищенные снимки MOEX; часовой пояс UTC; события — не сделки.'})).workbookId;
     if (!workbookId) throw new Error('API не вернул workbookId');
     const content=await request('bi-us',`/v2/workbooks/${workbookId}/entries?pageSize=100`);
-    const entries=content.entries || [];
+    const entries=(content.entries || []).map(e=>({...e,name:e.name ?? (e.displayKey ?? e.key ?? '').split('/').pop()}));
     let connectionId=entries.find(e=>e.scope==='connection' && e.name==='LR5 ClickHouse')?.entryId;
     if (!connectionId) {
         const connection=await request('bi-control-api','/api/v1/connections',{
             name:'LR5 ClickHouse',type:'clickhouse',workbook_id:workbookId,db_name:'mart',
             host:'warehouse',port:8123,username:input.env.WAREHOUSE_USER || 'student',
-            password:input.env.WAREHOUSE_PASSWORD || 'student',secure:'off',ssl_ca_verify:'off',raw_sql_level:'dashsql',
+            password:input.env.WAREHOUSE_PASSWORD || 'student',secure:'off',raw_sql_level:'dashsql',
         });
         connectionId=connection.id;
     }
     if (!connectionId) throw new Error('API не вернул connection.id');
     const definitions=[
-      {name:'LR5 · События по часам суток (UTC)',x:'hour_utc',type:'integer',y:'events',
+      {name:'LR5 - События по часам суток (UTC)',x:'hour_utc',type:'integer',y:'events',
        query:'SELECT toInt64(hour_utc) AS hour_utc,toFloat64(events) AS events FROM mart.dashboard_hourly ORDER BY hour_utc',
        question:'В какие часы суток UTC поступает больше событий за всю историю?',why:'До 24 столбцов сравнивают часы суток, суммируя все даты; это не хронологическая линия. Пропуски не соединяются.'},
-      {name:'LR5 · Топ-10 бумаг по событиям',x:'SECID',type:'string',y:'events',
+      {name:'LR5 - Топ-10 бумаг по событиям',x:'SECID',type:'string',y:'events',
        query:'SELECT SECID,toFloat64(events) AS events FROM mart.dashboard_top ORDER BY events DESC,SECID',
        question:'По каким бумагам больше всего событий за накопленную историю?',why:'Ранжированные столбцы сравнивают 10 подписанных бумаг одним цветом; цвет не кодирует 10 категорий.'},
-      {name:'LR5 · Бумаг с событиями за сутки (UTC)',x:'event_date',type:'date',y:'securities',
-       query:'SELECT event_date,toFloat64(securities) AS securities FROM mart.dashboard_daily ORDER BY event_date',
+      {name:'LR5 - Бумаг с событиями за сутки (UTC)',x:'event_date',type:'string',y:'securities',
+       query:'SELECT toString(event_date) AS event_date,toFloat64(securities) AS securities FROM mart.dashboard_daily ORDER BY event_date',
        question:'Как меняется число различных бумаг, по которым получены события за сутки UTC?',why:'Суточные столбцы сравнивают покрытие источника; это не сумма distinct по часам.'},
     ];
     const charts=[];
@@ -101,12 +107,12 @@ async function main(input, fetchImpl=fetch) {
     const items=charts.map((chart,i)=>({id:`c${i}`,type:'widget',namespace:'default',data:{hideTitle:false,
         tabs:[{id:`t${i}`,title:chart.name,chartId:chart.id,isDefault:true,params:{},autoHeight:false,description:chart.question}]}}));
     const dash={salt:'lr5-moex',schemeVersion:7,counter:4,
-        tabs:[{id:'main',title:'MOEX TQBR · UTC',items,
+        tabs:[{id:'main',title:'MOEX TQBR - UTC',items,
           layout:charts.map((_,i)=>({i:`c${i}`,x:0,y:i*14,w:36,h:14})),aliases:{},connections:[]}],
         settings:{hideTabs:true,hideDashTitle:false,silentLoading:false,autoupdateInterval:null,dependentSelectors:true}};
-    let dashboard=entries.find(e=>e.scope==='dash' && e.name==='ЛР5 · MOEX TQBR · UTC');
+    let dashboard=entries.find(e=>e.scope==='dash' && e.name==='ЛР5 - MOEX TQBR - UTC');
     if (!dashboard) dashboard=await request('bi-us','/v1/entries',{
-        scope:'dash',type:'',name:'ЛР5 · MOEX TQBR · UTC',workbookId,mode:'publish',data:dash,
+        scope:'dash',type:'',name:'ЛР5 - MOEX TQBR - UTC',workbookId,mode:'publish',data:dash,
         links:Object.fromEntries(charts.map((c,i)=>[`chart${i}`,c.id])),
         annotation:{description:'Три вопроса к истории MOEX. Событие — снимок бумаги, не сделка и не оборот. Все даты UTC. Отсутствие событий не равно отсутствию торгов.'},
     });
@@ -121,3 +127,4 @@ if (require.main===module || !module.parent) {
     main(JSON.parse(fs.readFileSync(0,'utf8'))).then(result=>process.stdout.write(JSON.stringify(result)))
       .catch(error=>{process.stderr.write(error.message+'\n');process.exitCode=1;});
 }
+

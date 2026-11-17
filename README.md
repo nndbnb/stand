@@ -182,7 +182,7 @@ MIT — файл [LICENSE](LICENSE). Ключи в `compose.bi-datalens.yaml` �
 
 ## ЛР5 — вариант 12
 
-План и запуск: [docs/LR5_PLAN.md](docs/LR5_PLAN.md). Реализация использует готовые clean/Iceberg ЛР3–ЛР4.
+Показ на сдаче: [LR5_ACCEPTANCE.md](LR5_ACCEPTANCE.md). Реализация использует готовые clean/Iceberg ЛР3–ЛР4.
 
 ```bash
 bash scripts/lr5_apply.sh
@@ -191,3 +191,8 @@ bash scripts/lr5_apply.sh
 Создаёт слои ClickHouse, звезду и SCD2, дашборд DataLens, проверяет повтор суток, сравнивает три пути и выполняет отдельный эксперимент ×10 с очисткой. Фактические результаты сохраняются в `data/lr5/results.md` и `results.json`; локальные тесты не заменяют запуск на накопленных данных.
 
 Показ на защите: [LR5_ACCEPTANCE.md](LR5_ACCEPTANCE.md) — только шесть основных критериев и дополнительный.
+
+
+## ЛР5 — показ на защите
+
+Открыть [LR5_ACCEPTANCE.md](LR5_ACCEPTANCE.md): два пункта с доски — витрина с объяснением графиков и все слои ClickHouse с DDL. Запросы только для чтения собраны в [jobs/lr5_acceptance.sql](jobs/lr5_acceptance.sql).

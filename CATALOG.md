@@ -140,7 +140,7 @@
 
 ## ЛР5 — наборы хранилища и связи
 
-Статус: ниже описана реализованная схема. Наличие данных и объёмы подтверждаются только после WSL-запуска, по `data/lr5/verification.json` и `benchmark.json`; локальные тестовые числа сюда не переносятся. Все даты событий UTC. Источник — потоковые снимки, исторические свечи в эти таблицы не смешиваются.
+Статус: загрузка на WSL подтверждена итоговым отчётом 16.11.2026: в stg.events, core.events и mart.fact_events по 8 164 287 строк. Дашборд проверен в браузере. Фактические проверки и замеры: `data/lr5/verification.json`, `benchmark.json`, `experiment.json`. Все даты событий UTC. Источник — потоковые снимки, исторические свечи в эти таблицы не смешиваются.
 
 ### stg.events
 
@@ -242,7 +242,7 @@
 
 - **Имя:** `mart.dashboard_hourly`, `mart.dashboard_top`, `mart.dashboard_daily`.
 - **Архитектура и слой:** логические представления витрины аналитического хранилища.
-- **Где лежит:** ClickHouse, база `mart`; DataLens — рабочая книга «ЛР5 · MOEX TQBR».
+- **Где лежит:** ClickHouse, база `mart`; DataLens — рабочая книга «ЛР5 - MOEX TQBR».
 - **Формат:** SQL View, отдельного физического хранения нет.
 - **Партиционирование и сортировка:** наследуют чтение `mart.events_hourly`; графики явно сортируют часы/даты/ранг.
 - **Источник:** `mart.events_hourly`, `jobs/warehouse_create.sql`.
@@ -264,5 +264,6 @@
 | Python `jobs/lr5.py` | ClickHouse | HTTP 8123, параметры запросов | Загрузка, проверки, профиль чтения |
 | ClickHouse `mart` | DataLens `bi-control-api`/`bi-data-api` | HTTP 8123, соединение `warehouse:8123` | Запросы трёх QL-чартов |
 | DataLens UI `bi` | Сервисы DataLens и `bi-us` | HTTP API | Хранение книги, чартов и дашборда |
-| DuckDB | SeaweedFS, Lakekeeper | S3 / Iceberg REST | Два пути сравнения за всю историю |
-| Spark | SeaweedFS, Lakekeeper | Iceberg REST / S3 | Экспериментальная CTAS и DROP PURGE; рабочая таблица не меняется |
+| DuckDB | SeaweedFS, Lakekeeper | S3 / Iceberg REST | Два пути сравнения за всю загруженную историю и INSERT в тестовые Iceberg-таблицы |
+| Spark | SeaweedFS, Lakekeeper | Iceberg REST / S3 | Создание схемы тестовых таблиц и DROP PURGE; данные загружает DuckDB; рабочая таблица не меняется |
+
