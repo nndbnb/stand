@@ -8,7 +8,22 @@ test -e .env.before-lr6 || cp -p .env .env.before-lr6
 .venv/bin/python jobs/lr6.py configure
 docker compose --profile lab6 config --quiet
 # Download and build before stopping the working profile.
-docker compose --profile lab6 pull broker registry
+ensure_image() {
+  local image="$1"
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    echo "Локальный образ: $image"
+  elif ! docker pull "$image"; then
+    echo "Повторная загрузка через curl: $image"
+    python3 scripts/lr6_pull_curl.py --tls12 "$image"
+  fi
+}
+for service in broker registry; do
+  image=$(docker compose --profile lab6 config --format json |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["services"][sys.argv[1]]["image"])' "$service")
+  ensure_image "$image"
+done
+base=$(awk 'toupper($1) == "FROM" {print $2; exit}' collector/Dockerfile)
+ensure_image "$base"
 docker compose build collector
 docker compose --profile lab5 stop
 docker compose --profile lab6 up -d
