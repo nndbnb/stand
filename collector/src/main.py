@@ -351,13 +351,17 @@ def record(config: Config, metrics: Metrics) -> None:
     store = RawStorage(config)
     store.recover(last)
     atomic_json(state_path, {"source_filter": "stock/shares/TQBR", "last_by_security": last})
+    queue = None
+    if metrics.mode == "produce":
+        from broker_stream import Outbox
+        queue = Outbox(state_path.parent, STOP, log)
     client = ISSClient(config, metrics)
     lake_sync = None
     if os.environ.get("COLLECTOR_LAKE_PREFIX", "").strip():
         from lake_sync import LakeSync
         lake_sync = LakeSync(config.raw_dir, STOP, log)
         lake_sync.start()
-    log("info", "start", mode="record", source=config.source, filter="stock/shares/TQBR")
+    log("info", "start", mode=metrics.mode, source=config.source, filter="stock/shares/TQBR")
     try:
         while not STOP.is_set():
             cycle_start = time.monotonic()
@@ -398,6 +402,8 @@ def record(config: Config, metrics: Metrics) -> None:
                     events.append(event)
                     updates[secid] = event_time
                 store.append(received, events)  # fsync раньше обновления позиции
+                if queue is not None:
+                    queue.append(events)
                 last.update(updates)
                 if updates:
                     atomic_json(state_path, {
@@ -417,7 +423,7 @@ def record(config: Config, metrics: Metrics) -> None:
         if lake_sync is not None:
             lake_sync.close()
         atomic_json(state_path, {"source_filter": "stock/shares/TQBR", "last_by_security": last})
-        log("info", "stopped", mode="record")
+        log("info", "stopped", mode=metrics.mode)
 
 
 def write_history_file(target: Path, events: list[dict]) -> bool:
@@ -517,14 +523,16 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
     mode = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("COLLECTOR_MODE", "record")
-    if mode not in {"record", "backfill"}:
-        log("error", "unsupported_mode", mode=mode,
-            note="produce и replay добавляются в ЛР6")
+    if mode not in {"record", "backfill", "produce", "replay"}:
+        log("error", "unsupported_mode", mode=mode)
         return 2
     try:
         config = Config.from_env(mode)
         metrics = Metrics(mode)
-        if mode == "record":
+        if mode == "replay":
+            from broker_stream import replay
+            replay(STOP, log)
+        elif mode in {"record", "produce"}:
             start_metrics_server(metrics)
             record(config, metrics)
         else:

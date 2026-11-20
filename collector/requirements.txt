@@ -1,3 +1,4 @@
 requests>=2.32,<3
 tzdata>=2025.2
 boto3>=1.35,<2
+confluent-kafka[avro]>=2.8,<3

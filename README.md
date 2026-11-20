@@ -196,3 +196,5 @@ bash scripts/lr5_apply.sh
 ## ЛР5 — показ на защите
 
 Открыть [LR5_ACCEPTANCE.md](LR5_ACCEPTANCE.md): два пункта с доски — витрина с объяснением графиков и все слои ClickHouse с DDL. Запросы только для чтения собраны в [jobs/lr5_acceptance.sql](jobs/lr5_acceptance.sql).
+
+ЛР6, вариант 12 — [подготовка и показ по критериям приёмки](LR6_ACCEPTANCE.md).

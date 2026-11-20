@@ -1,0 +1,2 @@
+-r ../jobs/requirements-lr6.txt
+moto[s3]>=5,<6
