@@ -11,6 +11,7 @@ docker compose --profile lab6 config --quiet
 ensure_image() {
   local image="$1"
   if docker image inspect "$image" >/dev/null 2>&1; then
+    python3 scripts/lr6_pull_curl.py --verify-local "$image"
     echo "Локальный образ: $image"
   elif ! docker pull "$image"; then
     echo "Повторная загрузка через curl: $image"

@@ -84,6 +84,26 @@ def parse_ref(ref):
     return registry, token_url, service, match[1], match[2]
 
 
+def verify_local(ref, cache):
+    manifest = cache/'images'/hashlib.sha256(ref.encode()).hexdigest()/'manifest.json'
+    if not manifest.is_file():
+        return  # A regular docker pull has no curl cache.
+    descriptor = json.loads(manifest.read_bytes())['config']
+    blob = cache/'blobs'/digest_hex(descriptor['digest'])
+    if not valid_blob(blob, descriptor):
+        raise ValueError('Invalid cached config for ' + ref)
+    source = json.loads(blob.read_bytes())
+    image = json.loads(subprocess.check_output(['docker', 'image', 'inspect', ref]))[0]
+    expected = source['rootfs']['diff_ids']
+    if (image['Os'] != source['os'] or image['Architecture'] != source['architecture']
+            or image['RootFS']['Layers'] != expected):
+        raise ValueError('Loaded platform or uncompressed layers differ for ' + ref)
+    for key in ('Entrypoint', 'Cmd', 'Env', 'User', 'WorkingDir'):
+        if (image['Config'].get(key) or None) != (source['config'].get(key) or None):
+            raise ValueError(f'Loaded config differs for {ref}: {key}')
+    print(f'Проверен {ref}: {image["Os"]}/{image["Architecture"]}, слоёв: {len(expected)}', flush=True)
+
+
 def pull(ref, cache, os_name, arch, tls12=False):
     registry, token_url, service, repository, tag = parse_ref(ref)
     token_data = json.loads(curl(token_url + '?' + urlencode({
@@ -140,18 +160,22 @@ def pull(ref, cache, os_name, arch, tls12=False):
         subprocess.run(['skopeo', 'copy', 'dir:'+str(image_dir),
                         'docker-archive:'+str(archive)+':'+ref], check=True)
         subprocess.run(['docker', 'load', '--input', str(archive)], check=True)
-    loaded = subprocess.check_output(['docker', 'image', 'inspect', ref, '--format', '{{.Id}}'], text=True).strip()
-    if loaded != doc['config']['digest']:
-        raise ValueError('Loaded image config digest mismatch for ' + ref)
+    verify_local(ref, cache)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--verify-local', action='store_true', help='Check an imported image against its cached config without network access')
     parser.add_argument('images', nargs='+', help='Explicit public image tags')
     parser.add_argument('--tls12', action='store_true', help='Force TLS 1.2 for curl')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     os.chdir(root)
+    cache = root/'data/lr6/image-cache'
+    if args.verify_local:
+        for ref in args.images:
+            verify_local(ref, cache)
+        return
     for command in ('curl', 'skopeo', 'docker'):
         if not shutil.which(command):
             raise RuntimeError('Missing command: '+command)
@@ -159,13 +183,13 @@ def main():
     os_name, arch = platform.split('/')
     arch = {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(arch, arch)
     images = args.images
-    cache = root/'data/lr6/image-cache'
     cache.mkdir(parents=True, exist_ok=True)
     with (cache/'download.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         for ref in images:
             if subprocess.run(['docker', 'image', 'inspect', ref], stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL).returncode == 0:
+                verify_local(ref, cache)
                 print('Already present: '+ref, flush=True)
                 continue
             print('Loading: '+ref, flush=True)
