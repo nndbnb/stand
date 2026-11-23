@@ -18,8 +18,6 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import boto3
-from botocore.config import Config
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "jobs/iceberg_load.sql"
@@ -36,6 +34,9 @@ def read_env():
 
 
 def make_client(env):
+    import boto3
+    from botocore.config import Config
+
     endpoint = env.get("S3_ENDPOINT", "http://s3:9000")
     if endpoint == "http://s3:9000":
         endpoint = "http://localhost:9000"

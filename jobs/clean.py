@@ -17,8 +17,6 @@ import re
 import subprocess
 import sys
 
-import boto3
-from botocore.config import Config
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -42,6 +40,9 @@ def quote(value):
 
 
 def s3_client(env):
+    import boto3
+    from botocore.config import Config
+
     endpoint = env.get("S3_ENDPOINT", "http://s3:9000")
     if endpoint == "http://s3:9000":
         endpoint = "http://localhost:9000"
