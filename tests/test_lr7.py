@@ -14,9 +14,18 @@ import clean
 import iceberg_load
 import lr7
 import lr7_notes
+import lr7_backfill
 
 
 class DailyPartition(unittest.TestCase):
+    def test_backfill_only_closed_days_with_both_raw_dates(self):
+        partitions = ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]
+        raw = {date(2026, 10, 31), date(2026, 11, 1), date(2026, 11, 3)}
+        selected, skipped = lr7_backfill.select_days(partitions, raw)
+        self.assertEqual(selected, ["2026-10-31"])
+        self.assertEqual(skipped, {"2026-10-30": ["2026-10-30"], "2026-11-01": ["2026-11-02"],
+                                   "2026-11-02": ["2026-11-02"]})
+
     def test_clean_and_load_rollover(self):
         day = date(2026, 10, 31)
         env = {"S3_BUCKET": "lake"}
