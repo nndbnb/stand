@@ -73,12 +73,29 @@ def groups(db, ch, day, target="mart.events_hourly"):
     return sorted(expected), sorted(actual)
 
 
-def compare(expected, actual):
-    for name, rows in (("Iceberg", expected), ("ClickHouse", actual)):
-        if len({(h, sec) for h, sec, *_ in rows}) != len(rows):
-            raise ValueError(f"{name}: повтор группы (час, SECID)")
-    if expected != actual:
-        raise ValueError(f"Состав групп или значения расходятся: Iceberg {len(expected)}, CH {len(actual)}")
+def compare(expected, actual, target="mart.events_hourly"):
+    def by_group(rows, table):
+        values = {}
+        for hour, ticker, events, entities, qty_sum in rows:
+            key = (hour, ticker)
+            if key in values:
+                raise ValueError(f"{table}: повтор группы час UTC={hour}, SECID={ticker}")
+            values[key] = (events, entities, qty_sum)
+        return values
+
+    lake = by_group(expected, "lake.clean.events_hourly")
+    mart = by_group(actual, target)
+    if lake != mart:
+        missing = lake.keys() - mart.keys()
+        extra = mart.keys() - lake.keys()
+        changed = sorted(key for key in lake.keys() & mart.keys() if lake[key] != mart[key])
+        examples = []
+        for hour, ticker in (changed[:3] + sorted(missing)[:1] + sorted(extra)[:1]):
+            key = (hour, ticker)
+            examples.append(f"час UTC={hour}, SECID={ticker}: Iceberg={lake.get(key)}, CH={mart.get(key)}")
+        raise ValueError(f"Iceberg {len(lake)}, {target} {len(mart)}. Только в Iceberg: {len(missing)}, "
+                         f"только в CH: {len(extra)}, разные метрики: {len(changed)}. "
+                         "Значения (events, entities, qty_sum): " + "; ".join(examples))
     return {"rows": len(actual), "events": sum(r[2] for r in actual),
             "entities_sum": sum(r[3] for r in actual), "qty_sum": sum(r[4] for r in actual)}
 
@@ -112,7 +129,7 @@ def publish(day):
                        "FROM lake_ice.`clean.events_hourly` WHERE event_date = {day:Date}",
                        parameters={"day": day})
             left, right = groups(db, ch, day, stage)
-            compare(left, right)
+            compare(left, right, stage)
             if right:
                 ch.command(f"ALTER TABLE mart.events_hourly REPLACE PARTITION '{day}' FROM {stage}")
             elif ch.query("SELECT count() FROM mart.events_hourly WHERE event_date = {day:Date}",

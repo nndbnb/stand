@@ -42,6 +42,14 @@ class DailyPartition(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "повтор"):
             lr7.compare(one + one, one + one)
 
+    def test_comparison_across_clients(self):
+        rows = [(1, "SBER", 7, 1, 25), (2, "ABIO", 1, 1, 15)]
+        self.assertEqual(lr7.compare(rows, [list(r) for r in reversed(rows)])["events"], 8)
+        with self.assertRaisesRegex(ValueError, r"SECID=SBER: Iceberg=\(7, 1, 25\), CH=\(7, 0, 0\)"):
+            lr7.compare(rows, [(1, "SBER", 7, 0, 0), rows[1]])
+        with self.assertRaisesRegex(ValueError, "только в CH: 1, разные метрики: 0"):
+            lr7.compare(rows, [rows[0], (3, "ABIO", 1, 1, 15)])
+
     def evaluate(self, last_hour=20, qty=1, inject=False):
         # Exercise the actual quality SQL over a small in-memory SQL table.
         conn = sqlite3.connect(":memory:")
