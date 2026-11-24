@@ -7,6 +7,17 @@ x-logging: &logging
   options: {max-size: 10m, max-file: "3"}
 
 services:
+  collector:
+    environment:
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/moex-bundle.pem
+    volumes:
+      - type: bind
+        source: ./data/lr7/moex-ca/bundle.pem
+        target: /etc/ssl/certs/moex-bundle.pem
+        read_only: true
+        bind:
+          create_host_path: false
+
   orchestrator:
     image: bigdata-stand/dagster:1
     build:

@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 test -s .env && test -x .venv/bin/python || { echo 'Запусти из рабочей копии ЛР6 с .env и .venv'; exit 1; }
+bash scripts/lr7_collector_ca.sh
 mkdir -p data/lr7
 test -e data/lr7/env.before-lr7 || install -m 600 .env data/lr7/env.before-lr7
 .venv/bin/python - <<'PY'
